@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "reinforcement-learning"
+version = "0.1.0"
+description = ""
+authors = ["Brad Smith <bradsmithvt18@gmail.com>"]
+readme = "README.md"
+packages = [{include = "reinforcement-learning"}]
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+numpy = ">=1.18.0"
+gym = { version = ">=0.17.2", extras = ["box2d"] }
+torch = ">=1.9.0"
+matplotlib = ">=3.3.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
