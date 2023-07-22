@@ -1,7 +1,3 @@
-# Author: Brad Smith
-# Title: Main Program for Lunar Lander OpenAi Gym Problem
-# Class: CS 7642 - Reinforcement Learning
-# Summer 2021
 import gym
 from gym.envs import box2d
 from gym.envs.box2d import lunar_lander
@@ -214,7 +210,7 @@ class LunarLanderAgent:
       self.seed+=1
 
 if __name__ == '__main__':
-   train = True
+   train = False
    model_name = 'network.pth' # NOTE: Must be changed if don't want to overwrite previous
    run = True
    n_episodes = 100

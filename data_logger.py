@@ -1,8 +1,3 @@
-# Author: Brad Smith
-# Title: Data Logger function for Trained Lunar Lander
-# Class: CS 7642 - Reinforcement Learning
-# Summer 2021
-
 def log_lunar_lander(lunar_lander, output_file_path):
    agent = lunar_lander
    output_file = output_file_path
