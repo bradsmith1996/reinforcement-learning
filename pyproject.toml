@@ -7,11 +7,12 @@ readme = "README.md"
 packages = [{include = "reinforcement-learning"}]
 
 [tool.poetry.dependencies]
-python = ">=3.7"
+python = ">=3.8"
 numpy = ">=1.18.0"
 gym = { version = ">=0.17.2", extras = ["box2d"] }
 torch = ">=1.9.0"
 matplotlib = ">=3.3.4"
+ipykernel = ">=6.24.0"
 
 [build-system]
 requires = ["poetry-core"]

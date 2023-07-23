@@ -10,10 +10,6 @@ from collections import deque, namedtuple
 # Local Includes:
 from data_logger import log_lunar_lander
 
-# Globals:
-# This helps with debugging, provides more sig figs
-torch.set_printoptions(precision=10)
-
 # Memory: Creates a simple structure type format that is efficicent for
 #         passing data into the loss function. Named tuples for replay memory
 #         are stored in the class MemoryCapacity
@@ -38,8 +34,7 @@ class MemoryCapacity:
    def get_capacity(self):
       return self.capacity
 
-# How to Build a Feedforward Neural Network in torch: https://medium.com/biaslyai/pytorch-introduction-to-neural-network-feedforward-neural-network-model-e7231cff47cb
-# Limited to two layers, no reason to get complicated with this
+# Neural Network.
 class FeedForwardNeuralNetwork(torch.nn.Module):
    def __init__(self,input_size, output_size, hidden_layer_size):
       # Initialize super class
@@ -58,12 +53,17 @@ class FeedForwardNeuralNetwork(torch.nn.Module):
       output = self.fc3(relu2_)
       return output
 
-class LunarLanderAgent:
+class DeepQLearningAgent:
    # Constructor:
-   def __init__(self, render_mode="rgb_array"):
+   def __init__(
+      self,
+      environment: str,
+      render: bool = False,
+   ) -> None:
       # Set up the Environment and its parameters:
       self.num_actions = 4 # Number of lander actions: do nothing, thrust left, thrust right, main engine
-      self.env = gym.make("LunarLander-v2", render_mode=render_mode)
+      render_mode = "human" if render else "rgb_array"
+      self.env = gym.make(environment, render_mode=render_mode)
       self.env.reset() # Reset the lander to begin
       # Meta Data Collection:
       self.total_reward_vector = []
@@ -91,7 +91,6 @@ class LunarLanderAgent:
       # Initialize Static Parameters
       self.episode_step = 0
       self.epsilon = 0.0
-      self.seed = 0
       # Initialize memory:
       self.memory_capacity = MemoryCapacity(self.memory_capacity_count)
    # Wrapper Environment Calls to LunarLander:
@@ -101,14 +100,9 @@ class LunarLanderAgent:
       return self.render()
    def step(self,action):
       return self.env.step(action)
-   def set_seed(self,seed):
-      self.seed = seed
-   def seed_env(self):
-      self.env.seed(self.seed)
    # Action Selection Method:
    def select_action(self, net, state, epsilon):
       # Compute decayed epsilon:
-      # Source : https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
       # Get the probability seed to take the greedy action:
       if np.random.random(1) > epsilon:
          actions = net.forward(torch.tensor(state))
@@ -124,28 +118,29 @@ class LunarLanderAgent:
       self.epsilon = self.epsilson_begin
       counts = 0
       for i in range(self.num_episodes):
-         print("Current interation and epsilon: {0} / {1}".format(i,self.epsilon))
-         state, _ = np.array(self.reset())
+         print("Current interation and epsilon: {0} / {1}".format(i,self.epsilon)) 
+         state, _ = self.reset()
          total_reward = 0
-         while True:
+         episode_terminated = False
+         while not episode_terminated:
             # Select action (max at probability of epsilon (epsilon-greedy))
             action = self.select_action(self.net, state, self.epsilon)
             # Execute action:
-            state_prime, reward, done, _, _ = self.step(action)
+            state_prime, reward, episode_terminated, _, _ = self.step(action)
             total_reward+=reward # Increment total accumulated reward for the current episode
             # Memory Bank Update:
-            self.memory_capacity.push(state, action, reward, state_prime, done)
+            self.memory_capacity.push(state, action, reward, state_prime, episode_terminated)
             # Train the Neural Network on the random batch:
             if self.memory_capacity.size() >= self.batch_size:
                # Draw a random batch of memories for neural network training
                random_batch = self.memory_capacity.get_batch(self.batch_size)
                batch = Memory(*zip(*random_batch))
                # Create pytorch batches:
-               state_batch = torch.tensor(tuple(batch.state))
-               action_batch = torch.tensor(tuple(batch.action))
-               reward_batch = torch.tensor(tuple(batch.reward))
-               state_prime_batch = torch.tensor(tuple(batch.state_prime))
-               terminal_batch = torch.tensor(tuple(batch.terminal))
+               state_batch = torch.tensor(np.array(batch.state))
+               action_batch = torch.tensor(np.array(batch.action))
+               reward_batch = torch.tensor(np.array(batch.reward))
+               state_prime_batch = torch.tensor(np.array(batch.state_prime))
+               terminal_batch = torch.tensor(np.array(batch.terminal))
                # Get batch network outputs:
                output = self.net.forward(state_batch)
                output_prime = self.target_net(state_prime_batch)
@@ -161,7 +156,7 @@ class LunarLanderAgent:
             # Every certain number of iterations, update the target network:
             if render:
                self.env.render()
-            if done:
+            if episode_terminated:
                print(total_reward)
                self.epsilon_schedule.append(self.epsilon)
                self.total_reward_vector.append(total_reward)
@@ -172,7 +167,6 @@ class LunarLanderAgent:
                   self.epsilon*=self.linear_decay_rate
                   if self.epsilon < self.epsilson_end:
                      self.epsilon = self.epsilson_end
-               break
             if counts % self.target_update_rate == 0:
                self.target_net.load_state_dict(self.net.state_dict())
             counts+=1
@@ -182,32 +176,31 @@ class LunarLanderAgent:
       # Once done running, save the network for persistence:
       model_path = 'network.pth'
       torch.save(self.net,model_path)
-      # TO LOAD: net = torch.load(MODEL_PATH)
+
    def run(self,a_model_path,n_episodes,render=True):
-      # Run the lander:
-      # self.seed_env()
+      # Run the lander.
       net = torch.load(a_model_path)
       net.eval()
       self.epsilon = -1.0 # Always takes greedy choice in select action
       for i in range(n_episodes):
          print("Current interation: {0}".format(i))
-         state, _ = np.array(self.reset())
+         state, _ = self.reset()
          total_reward = 0
-         while True:
+         episode_terminated = False
+         while not episode_terminated:
             # Select action (max at probability of epsilon (epsilon-greedy))
             action = self.select_action(net,state,self.epsilon)
             # Execute action:
-            state_prime, reward, done, _, _ = self.step(action)
+            state_prime, reward, episode_terminated, _, _ = self.step(action)
             total_reward+=reward # Increment total accumulated reward for the current episode
             # Every certain number of iterations, update the target network:
             if render:
                self.env.render()
-            if done:
+            if episode_terminated:
                print(total_reward)
                self.total_reward_vector.append(total_reward)
                break
             state = state_prime.copy()
-      self.seed+=1
 
 if __name__ == '__main__':
    train = False
@@ -215,10 +208,9 @@ if __name__ == '__main__':
    run = True
    n_episodes = 100
    run_model_name = 'network.pth'
-   seed = 1200
    # Train:
    if train:
-      lander = LunarLanderAgent()
+      lander = DeepQLearningAgent(environment="LunarLander-v2")
       lander.train(render=True)
       plt.plot(lander.total_reward_vector,'k')
       plt.xlabel("Episode Number")
@@ -233,8 +225,7 @@ if __name__ == '__main__':
       plt.ylabel("Feedforward Neural Network Loss")
       plt.show()
    if run:
-      lander = LunarLanderAgent(render_mode="human")
-      # lander.reset(seed=seed)
+      lander = DeepQLearningAgent(environment="LunarLander-v2", render=False)
       lander.run(run_model_name,n_episodes,render=True)
       average = np.mean(lander.total_reward_vector)
       print("Average Reward: {0}".format(average))
