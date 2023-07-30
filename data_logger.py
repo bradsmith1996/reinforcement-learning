@@ -1,4 +1,4 @@
-def log_lunar_lander(lunar_lander, output_file_path):
+def log_lunar_lander(lunar_lander, output_file_path, num_episodes):
    agent = lunar_lander
    output_file = output_file_path
    with open(output_file,"w") as the_file:
@@ -9,9 +9,9 @@ def log_lunar_lander(lunar_lander, output_file_path):
       # Epsilon Schedule:
       the_file.write("Epsilon Schedule Type    : "+agent.epsilson_schedule_type+"\n")
       # Number of Hidden Neural Network Cells per hidden layer:
-      the_file.write("Hidden Layer Cell Count  : "+str(agent.h)+"\n")
+      the_file.write("Hidden Layer Cell Count  : "+str(agent.hidden_sizes[0])+"\n")
       # Number of Episodes:
-      the_file.write("Number of Episodes       : "+str(agent.num_episodes)+"\n")
+      the_file.write("Number of Episodes       : "+str(num_episodes)+"\n")
       # Batch Size
       the_file.write("Batch Size               : "+str(agent.batch_size)+"\n")
       # Write the meta data:
